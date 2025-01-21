@@ -6,7 +6,7 @@ public interface Connections<T> {
 
     void connect (String login, String passcode);
 
-    boolean isConnected(int connectionId, String login, String passcode);
+    boolean isConnected(String login, String passcode);
 
     boolean isConnected(int connectionId);
 

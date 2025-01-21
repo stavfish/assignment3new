@@ -69,9 +69,14 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<String
              sendError("Missing login or passcode in CONNECT");
              return;
         } 
+        
+        else if (connections.isConnected(connectionId)){
+            sendError("Client is already login.");
+            return;
+        }
 
-        else if (connections.isConnected(connectionId, login, passcode)) { 
-            sendError("Client is already connected.");
+        else if (connections.isConnected(login, passcode)) { 
+            sendError("User is already login.");
             return;
         }
 

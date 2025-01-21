@@ -1,6 +1,5 @@
 package bgu.spl.net.srv;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -29,9 +28,9 @@ public class ConnectionsImpl<T> implements Connections<T> {
             }
         }
     
-    public boolean isConnected(int connectionId, String userName, String passcode) {
+    public boolean isConnected(String userName, String passcode) {
         User user = users.get(userName);
-        return clients.containsKey(connectionId) || user.isLogIn();
+        return user.isLogIn();
     }
 
     public boolean isConnected(int connectionId){
