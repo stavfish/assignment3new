@@ -27,4 +27,5 @@ public class StompEncoderDecoder implements MessageEncoderDecoder<String> {
          return (message + '\0').getBytes(StandardCharsets.UTF_8);
     }
     
+    
 }

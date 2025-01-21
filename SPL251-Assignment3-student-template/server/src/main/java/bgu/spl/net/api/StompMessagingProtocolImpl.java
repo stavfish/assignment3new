@@ -2,7 +2,9 @@ package bgu.spl.net.api;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import bgu.spl.net.impl.stomp.Frame;
 import bgu.spl.net.srv.Connections;
 
 public class StompMessagingProtocolImpl implements StompMessagingProtocol<String> {
@@ -17,32 +19,27 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<String
     }
 
     @Override
-    public String process(String message) {//////////string instead of void 
-        String[] lines = message.split("\n");
-        String command = lines[0].trim(); 
-        Map<String, String> headers = new HashMap<>();
-
-        int i = 1;
-        while (i < lines.length && !lines[i].trim().isEmpty()) {
-            String[] header = lines[i].split(":", 2);
-            if (header.length == 2) {
-                headers.put(header[0].trim(), header[1].trim());
-            }
-            i++;
+    public void process(String message) {
+        try {
+            Frame frame = Frame.fromString(message);
+            handleCommand(frame);
+        } 
+        catch (IllegalArgumentException e) {
+            sendError("Invalid STOMP frame: " + e.getMessage())
+            ;
         }
-
-        String body = (i < lines.length) ? lines[i].trim() : "";
-        handleCommand(command, headers, body);
-        return null;
-}
-
+    }
 
     @Override
     public boolean shouldTerminate() {
         return shouldTerminate;
     }
 
-    private void handleCommand(String command, Map<String, String> headers, String body) {
+    private void handleCommand(Frame frame) {
+        String command = frame.getCommand();
+        Map<String, String> headers = frame.getHeaders();
+        String body = frame.getBody();
+
         switch (command) {
             case "CONNECT":
                 handleConnect(headers);
@@ -57,7 +54,7 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<String
                 handleSend(headers, body);
                 break;
             case "DISCONNECT":
-                handleDisconnect();
+                handleDisconnect(headers);
                 break;
             default:
                 sendError("Unknown command: " + command);
@@ -73,34 +70,21 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<String
              return;
         } 
 
-        else if (connections.isConnected(connectionId)) { 
+        else if (connections.isConnected(connectionId, login, passcode)) { 
             sendError("Client is already connected.");
             return;
         }
 
-        else if (!connections.isSubscribed(login, connectionId)){
-            sendError("Client is not subscribe.");
+        else if (!connections.isPasscodeCorrect(login, passcode)){
+            sendError("Invalid Passcode.");
             return;
         }
 
-        else {
-             connections.send(connectionId, "CONNECTED\nversion:1.2\n\n\u0000");
-        }
-    }
-
-    private void handleSubscribe(Map<String, String> headers) {
-        String destination = headers.get("destination");
-        if (destination == null) {
-            sendError("Missing destination in SUBSCRIBE");
-        } 
-        else if(connections.isSubscribed(destination, connectionId)){
-            sendError("Client is already subscribed to the topic: " + destination);
-            return;
-        }
-        else {
-            connections.subscribe(destination, connectionId);
-            connections.send(connectionId, "SUBSCRIBED to " + destination);
-        }
+        ConcurrentHashMap<String, String> respondHeaders = new ConcurrentHashMap<>();
+        respondHeaders.put("version", "1.2");
+        Frame respondFrame = new Frame("CONNECTED", respondHeaders, null);
+        connections.connect(login,passcode);
+        connections.send(connectionId, respondFrame);
     }
 
     private void handleSend(Map<String, String> headers, String body) {
@@ -108,28 +92,32 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<String
         String destination = headers.get("destination");
         if (destination == null) {
             sendError("Missing destination in SEND");
+            return;
         } 
 
         else if (!connections.isSubscribed(destination, connectionId)) {
             sendError("Client is not subscribed to the topic: " + destination);
             return;
         }
+        connections.send(destination, body); 
         
-        else {
-            connections.send(destination, body); 
-        }
     }
 
-    private void handleDisconnect() {
-        if (!connections.isConnected(connectionId)) { 
-            sendError("Client is already disconnected.");
+    private void handleSubscribe(Map<String, String> headers) {
+        String destination = headers.get("destination");
+        String subscriptionId = headers.get("id");
+        if (destination == null || subscriptionId == null) {
+            sendError("Missing destination or id in SUBSCRIBE");
+            return;
+        } 
+        else if (connections.isSubscribed(destination,connectionId)){
+            sendError("Client is already subscribed to the topic: " + destination);
+            return;
         }
-        else {
-        connections.disconnect(connectionId);
-        shouldTerminate = true;
-        }
-    }
 
+        connections.subscribe(destination, connectionId, subscriptionId);
+    }
+    
     private void handleUnsubscribe(Map<String, String> headers) {
         String subscriptionId = headers.get("id");
         
@@ -148,9 +136,30 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<String
             sendError("Failed to unsubscribe. Subscription ID not found: " + subscriptionId);
         }
      }
+
+     private void handleDisconnect(Map<String, String> headers) {
+        String receipt = headers.get("receipt");
+
+        if (!connections.isConnected(connectionId)) { 
+            sendError("Client is already disconnected.");
+        }
+        else {
+        connections.disconnect(connectionId);
+        ConcurrentHashMap<String, String> respondHeaders = new ConcurrentHashMap<>();
+        respondHeaders.put("receipt-id", receipt);
+        Frame respondFrame = new Frame("DISCONNECT", respondHeaders, null);
+        connections.send(connectionId, respondFrame);
+        shouldTerminate = true;
+        }
+    }
+
          
-    private void sendError(String errorMessage) {
-        connections.send(connectionId, "ERROR\nmessage:" + errorMessage + "\n\n\u0000");
+    private void sendError( String errorMessage) {
+        ConcurrentHashMap<String, String> respondHeaders = new ConcurrentHashMap<>();
+        respondHeaders.put("receipt-id","message-12345");
+        respondHeaders.put("message",errorMessage);
+        Frame respondFrame = new Frame("ERROR", respondHeaders, null);
+        connections.send(connectionId, respondFrame);
         shouldTerminate = true;
     }
     
