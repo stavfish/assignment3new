@@ -8,13 +8,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import bgu.spl.net.dataBase.User;
 import bgu.spl.net.impl.stomp.Frame;
 
-public class ConnectionsImpl<T> implements Connections<T> {
+public class ConnectionsImpl implements Connections<Frame> {
 
     private ConcurrentMap<String, User> users = new ConcurrentHashMap<>();// userName -> User
-    private ConcurrentMap<Integer, ConnectionHandler<T>> clients = new ConcurrentHashMap<>(); // Map to store connection handlers for each client
+    private ConcurrentMap<Integer, ConnectionHandler<Frame>> clients = new ConcurrentHashMap<>(); // Map to store connection handlers for each client
     private ConcurrentMap<String, CopyOnWriteArraySet<Integer>> topicSubscribers = new ConcurrentHashMap<>();  //topic -> <connectionId>
     private ConcurrentMap<Integer, Map<String, String>> subscriptionMap = new ConcurrentHashMap<>(); //connectionId -> (subscriptionId -> topic)
     private AtomicInteger msgId = new AtomicInteger(1);
+
 
     @Override
     public void connect (String userName, String passcode){
@@ -74,41 +75,32 @@ public class ConnectionsImpl<T> implements Connections<T> {
         return true;
     }
 
-    public void send(String channel, T msg) { // Send the message to all clients subscribed to the topic
+    public void send(String channel, Frame frame) { // Send the frame to all clients subscribed to the topic
         CopyOnWriteArraySet<Integer> subscribers = topicSubscribers.get(channel);
         if (subscribers != null) {
             for (Integer connectionId : subscribers) {
-                Map<String, String> subscriptions = subscriptionMap.get(connectionId);
-                if (subscriptions != null) {
-                    String subscriptionId = null;
-                    for (Map.Entry<String, String> entry : subscriptions.entrySet()) {
-                        if (entry.getValue().equals(channel)) {
-                            subscriptionId = entry.getKey(); 
-                            break;
-                        }
-                    }
-
-                    if (subscriptionId != null) {
-                        ConcurrentHashMap<String, String> respondHeaders = new ConcurrentHashMap<>();
-                        respondHeaders.put("subscription", subscriptionId);
-                        respondHeaders.put("message-id", String.valueOf(msgId.getAndIncrement()));
-                        respondHeaders.put("destination", channel);
-                        Frame messageFrame = new Frame("MESSAGE", respondHeaders, msg.toString());
-                        send(connectionId, (T)messageFrame);
-                    }
-                }
+                Map<String, String> headers = frame.getHeaders();
+                headers.replace("subscription", getSubscriptionId(connectionId));
+                headers.replace("message-id", String.valueOf(msgId.getAndIncrement()));
+                send(connectionId, frame);
             }
         }
     }
 
-    public void send(int connectionId, Frame respondFrame){ // Send frame to the specific client
-        send(connectionId, (T) respondFrame.toString());
-    }  
+    private String getSubscriptionId(int connectionId){
+        Map<String, String> subscriptions = subscriptionMap.get(connectionId);
+        if (subscriptions != null) {
+            for (Map.Entry<String, String> entry : subscriptions.entrySet()) {
+                return entry.getKey(); 
+            }
+        }
+        return null; 
+    }
 
-    public boolean send(int connectionId, T msg) { // Send message to the specific client
-        ConnectionHandler<T> handler = clients.get(connectionId);
+    public boolean send(int connectionId, Frame frame) { // Send message to the specific client
+        ConnectionHandler<Frame> handler = clients.get(connectionId);
         if (handler != null) {
-            handler.send(msg); 
+            handler.send(frame); 
             return true;
         }
         return false;
@@ -132,7 +124,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
         clients.remove(connectionId);
     }
     
-    public void addClient(int connectionId, ConnectionHandler<T> handler) { // Register a new client connection
+    public void addClient(int connectionId, ConnectionHandler<Frame> handler) { // Register a new client connection
         clients.put(connectionId, handler);
     }
 }
