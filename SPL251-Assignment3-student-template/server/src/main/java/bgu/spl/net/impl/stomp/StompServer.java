@@ -15,18 +15,18 @@ public class StompServer {
             return;
         }
 
-        String mode = args[0]; // Either "tpc" or "reactor"
+        String mode = args[1]; // Either "tpc" or "reactor"
         int port; // Parse port number
         try {
-            port = Integer.parseInt(args[1]); // Parse port number
+            port = Integer.parseInt(args[0]); // Parse port number
         } catch (NumberFormatException e) {
             System.out.println("Invalid port number.");
             return;
         }
 
         // Suppliers for protocol and encoder/decoder
-        Supplier<MessagingProtocol<String>> protocolFactory = StompMessagingProtocolImpl::new;
-        Supplier<MessageEncoderDecoder<String>> encoderDecoderFactory = StompEncoderDecoder::new;
+        Supplier<MessagingProtocol<Frame>> protocolFactory = StompMessagingProtocolImpl::new;
+        Supplier<MessageEncoderDecoder<Frame>> encoderDecoderFactory = StompEncoderDecoder::new;
         
         if (mode.equalsIgnoreCase("tpc")) {
             // Thread-Per-Client mode

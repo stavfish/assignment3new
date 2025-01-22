@@ -20,7 +20,6 @@ public class StompMessagingProtocolImpl implements StompMessagingProtocol<Frame>
     @Override
     public void process(Frame message) {
         try {
-            //Frame frame = Frame.fromString(message);
             handleCommand(message);
         } 
         catch (IllegalArgumentException e) {
