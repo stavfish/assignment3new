@@ -2,7 +2,6 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
-import bgu.spl.net.impl.stomp.Frame;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -11,20 +10,20 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class NonBlockingConnectionHandler implements ConnectionHandler<Frame> {
+public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
 
     private static final int BUFFER_ALLOCATION_SIZE = 1 << 13; //8k
     private static final ConcurrentLinkedQueue<ByteBuffer> BUFFER_POOL = new ConcurrentLinkedQueue<>();
 
-    private final MessagingProtocol<Frame> protocol;
-    private final MessageEncoderDecoder<Frame> encdec;
+    private final MessagingProtocol<T> protocol;
+    private final MessageEncoderDecoder<T> encdec;
     private final Queue<ByteBuffer> writeQueue = new ConcurrentLinkedQueue<>();
     private final SocketChannel chan;
     private final Reactor reactor;
 
     public NonBlockingConnectionHandler(
-            MessageEncoderDecoder<Frame> reader,
-            MessagingProtocol<Frame> protocol,
+            MessageEncoderDecoder<T> reader,
+            MessagingProtocol<T> protocol,
             SocketChannel chan,
             Reactor reactor) {
         this.chan = chan;
@@ -48,17 +47,11 @@ public class NonBlockingConnectionHandler implements ConnectionHandler<Frame> {
             return () -> {
                 try {
                     while (buf.hasRemaining()) {
-                        Frame nextMessage = encdec.decodeNextByte(buf.get());
+                        T nextMessage = encdec.decodeNextByte(buf.get());
                         if (nextMessage != null) {
-                            protocol.process(nextMessage); // Process the message
+                            protocol.process(nextMessage);
+                      
                         }
-                        // if (nextMessage != null) {
-                        //     T response = protocol.process(nextMessage);
-                        //     if (response != null) {
-                        //         writeQueue.add(ByteBuffer.wrap(encdec.encode(response)));
-                        //         reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-                        //     }
-                        // }
                     }
                 } finally {
                     releaseBuffer(buf);
@@ -121,10 +114,8 @@ public class NonBlockingConnectionHandler implements ConnectionHandler<Frame> {
     }
 
     @Override
-    public void send(Frame msg) {
-        if (msg != null) {
-            writeQueue.add(ByteBuffer.wrap(encdec.encode(msg)));
-            reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
-        }
+    public void send(T msg) {
+        writeQueue.add(ByteBuffer.wrap(encdec.encode(msg)));
+        reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
     }
 }
