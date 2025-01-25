@@ -34,13 +34,17 @@ public class StompEncoderDecoder implements MessageEncoderDecoder<Frame> {
             i++;
         }
 
-        String body = (i < lines.length) ? lines[i].trim() : "";
+        StringBuilder bodyBuilder = new StringBuilder();
+        for (int j = i + 1; j < lines.length; j++) {
+            bodyBuilder.append(lines[j]).append("\n");
+        }
+        String body = bodyBuilder.toString().trim();        
         Frame newFrame = new Frame(command, headers, body);
         return newFrame;
     }
 
     @Override
     public byte[] encode(Frame message) {
-        return (message.toString() + '\u0000').getBytes(StandardCharsets.UTF_8);
+        return (message.toString()).getBytes(StandardCharsets.UTF_8);
     }
 }

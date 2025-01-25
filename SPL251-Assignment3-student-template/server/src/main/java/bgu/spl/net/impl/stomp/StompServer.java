@@ -21,7 +21,7 @@ public class StompServer {
     //     System.out.println("Invalid port number.");
     //     return;
     // }
-    String mode = "TPC";
+    String mode = "Reactor";
     int port = 7777;
     
     if (mode.equals("TPC")) {
@@ -29,7 +29,7 @@ public class StompServer {
                 port,
                 () -> new StompMessagingProtocolImpl(), 
                 StompEncoderDecoder::new,
-                new ConnectionsImpl()
+                new ConnectionsImpl<>()
         ).serve();
     }
     else if (mode.equals("Reactor")) {
@@ -38,7 +38,7 @@ public class StompServer {
                 port,
                 () -> new StompMessagingProtocolImpl(), 
                 StompEncoderDecoder::new,
-                new ConnectionsImpl()
+                new ConnectionsImpl<>()
         ).serve();      
     }
     else {
