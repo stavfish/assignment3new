@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../include/ConnectionHandler.h"
+#include "ConnectionHandler.h"
 #include "KeyboardInput.h"
-#include "StompProtocol.h"
 #include <queue>
 #include <string>
 #include <mutex>
@@ -10,28 +9,23 @@
 #include <thread>
 
 class Threads {
-private:
-    std::queue<std::string> frameQueue; // Queue for frames to handle
-    std::mutex queueMutex;              // Mutex to synchronize access to the queue
-    std::condition_variable queueCV;    // Condition variable for thread signaling
-    KeyboardInput keyboardInput;        // Handles keyboard input
-    StompProtocol stompProtocol;        // Handles STOMP protocol
-    bool running;                       // Tracks the running state of threads
-
-    // Thread methods
-    void keyboardListener();            // Listens for keyboard input
-    void networkListener();             // Listens for network messages
-    void frameHandler();                // Handles frames from the queue
-
 public:
-    Threads(ConnectionHandler& handler);
-
-    // Starts the threads
+    explicit Threads(ConnectionHandler& handler);
     void start();
-
-    // Stops the threads
     void stop();
+    bool isRunning();
+    void addFrame(const std::string &frame);
 
-    // Adds a frame to the queue
-    void addFrame(const std::string& frame);
+private:
+    ConnectionHandler& connectionHandler; // Connection handler reference
+    KeyboardInput keyboardInput;          // Handles keyboard input
+    std::queue<std::string> frameQueue;   // Queue for frames
+    std::mutex queueMutex;                // Mutex for thread safety
+    std::condition_variable queueCV;      // Condition variable for signaling
+    bool running;                         // Tracks running state
+
+    // Private methods for thread tasks
+    void keyboardListener();              // Listens for keyboard input
+    void networkListener();               // Listens for network messages
+    void frameHandler();                  // Handles frames from the queue
 };

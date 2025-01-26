@@ -33,20 +33,41 @@ bool ConnectionHandler::connect() {
 }
 
 bool ConnectionHandler::getBytes(char bytes[], unsigned int bytesToRead) {
-	size_t tmp = 0;
-	boost::system::error_code error;
-	try {
-		while (!error && bytesToRead > tmp) {
-			tmp += socket_.read_some(boost::asio::buffer(bytes + tmp, bytesToRead - tmp), error);
-		}
-		if (error)
-			throw boost::system::system_error(error);
-	} catch (std::exception &e) {
-		std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
-		return false;
-	}
-	return true;
+    size_t totalBytesRead = 0; // Keep track of the total bytes read
+    boost::system::error_code error;
+
+    try {
+        while (totalBytesRead < bytesToRead) { // Read until the required number of bytes is read
+            size_t bytesRead = socket_.read_some(
+                boost::asio::buffer(bytes + totalBytesRead, bytesToRead - totalBytesRead), error);
+
+            if (error) {
+                if (error == boost::asio::error::eof) {
+                    // EOF encountered: log it and return true if all bytes were read
+                    std::cerr << "Connection closed by the server (EOF)." << std::endl;
+                    return totalBytesRead == bytesToRead; // Success if all required bytes are already read
+                } else {
+                    // Handle other errors as fatal
+                    throw boost::system::system_error(error);
+                }
+            }
+
+            totalBytesRead += bytesRead; // Update the total number of bytes read
+
+            // Debug log
+            std::cerr << "Bytes read: " << bytesRead 
+                      << ", Total read: " << totalBytesRead 
+                      << "/" << bytesToRead << std::endl;
+        }
+    } catch (const std::exception& e) {
+        // Log exceptions other than EOF
+        std::cerr << "getBytes failed (Error: " << e.what() << ")" << std::endl;
+        return false;
+    }
+
+    return true; // Successfully read all required bytes
 }
+
 
 bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
 	int tmp = 0;

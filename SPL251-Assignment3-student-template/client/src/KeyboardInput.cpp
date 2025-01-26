@@ -1,32 +1,37 @@
 #include "KeyboardInput.h"
 #include "Frame.h"
-#include "Threads.h"
-#include <iostream>
 #include <map>
-#include <string>
+#include <iostream>
+#include <vector>
 
-KeyboardInput::KeyboardInput(ConnectionHandler handler) : connectionHandler(handler) {}
+// Constructor
+KeyboardInput::KeyboardInput(ConnectionHandler& handler) : connectionHandler(handler) {
+    std::cout << "KeyboardInput initialized.\n";
+}
 
-Frame KeyboardInput::logIn(const std::string host, const std::string username, const std::string password) {
+// Log in
+Frame KeyboardInput::logIn(const std::string& host, const std::string& username, const std::string& password) {
     std::map<std::string, std::string> headers = {
         {"accept-version", "1.2"},
-        {"host", host},
+        {"host", "stomp.cs.bgu.ac.il"},
         {"login", username},
         {"passcode", password}
     };
-    return Frame("CONNECT", headers, "");
+    return Frame("CONNECT", headers,"");
 }
 
-Frame KeyboardInput::join(const std::string channel_name) {
+// Join a channel
+Frame KeyboardInput::join(const std::string& channelName) {
     std::map<std::string, std::string> headers = {
-        {"destination", "/" + channel_name},
-        {"id", "1"},  // Generate a unique ID for each subscription
+        {"destination", "/" + channelName},
+        {"id", "1"},  // Unique ID for subscription
         {"receipt", "join-receipt"}
     };
     return Frame("SUBSCRIBE", headers, "");
 }
 
-Frame KeyboardInput::exit(const std::string channel_name) {
+// Exit a channel
+Frame KeyboardInput::exit(const std::string& channelName) {
     std::map<std::string, std::string> headers = {
         {"id", "1"},  // Match the ID used in the join command
         {"receipt", "exit-receipt"}
@@ -34,41 +39,31 @@ Frame KeyboardInput::exit(const std::string channel_name) {
     return Frame("UNSUBSCRIBE", headers, "");
 }
 
-std::vector<Frame> KeyboardInput::report(const std::string file) {
+// Report events (example using a file path to parse events)
+std::vector<Frame> KeyboardInput::report(const std::string& filePath) {
     std::vector<Frame> frames;
-    // Parse the JSON file to extract events
-    names_and_events parsedEvents = parseEventsFile(file);
-    const std::string& channel_name = parsedEvents.channel_name;
 
-    for (const Event& event : parsedEvents.events) {
-        std::map<std::string, std::string> headers = {
-            {"destination", "/" + channel_name}
-        };
+    // This is a stub implementation. Replace with actual file parsing.
+    std::cout << "Parsing events from file: " << filePath << std::endl;
 
-        std::string body = "user:" + event.getEventOwnerUser() + "\n" +
-                           "city:" + event.get_city() + "\n" +
-                           "event name:" + event.get_name() + "\n" +
-                           "date time:" + std::to_string(event.get_date_time()) + "\n" +
-                           "general information:";
+    // Example frame creation
+    std::map<std::string, std::string> headers = {
+        {"destination", "/exampleChannel"}
+    };
+    frames.push_back(Frame("SEND", headers, "Event data"));
 
-        for (const auto& info : event.get_general_information()) {
-            body += "\n  " + info.first + ":" + info.second;
-        }
-
-        body += "\n\n" + event.get_description();
-
-        frames.emplace_back("SEND", headers, body);
-    }
     return frames;
 }
 
-Frame KeyboardInput::summary(const std::string channel_name, const std::string user, const std::string file) {
-    // Implementation of summary assumes that the Threads or another class has stored received events
-    // For simplicity, stub implementation here
-    std::cerr << "Summary generation not yet implemented.\n";
-    return Frame("SUMMARY", {}, "");
+// Generate a summary
+Frame KeyboardInput::summary(const std::string& channelName, const std::string& user, const std::string& filePath) {
+    std::cout << "Generating summary for channel: " << channelName << " and user: " << user << std::endl;
+
+    // Placeholder implementation for the summary frame
+    return Frame("SUMMARY", {}, "Generated summary content");
 }
 
+// Log out
 Frame KeyboardInput::logout() {
     std::map<std::string, std::string> headers = {
         {"receipt", "logout-receipt"}

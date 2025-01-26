@@ -1,24 +1,31 @@
 #pragma once
-
-#include "../include/ConnectionHandler.h"
+#include "ConnectionHandler.h"
 #include "Frame.h"
-#include "Threads.h"
-#include "event.h" 
-#include <string>
 #include <vector>
+#include <string>
 
 class KeyboardInput {
-private:
-    ConnectionHandler connectionHandler; // Handles communication with the server
-
 public:
-    KeyboardInput(ConnectionHandler handler);
+    explicit KeyboardInput(ConnectionHandler& handler);
 
-    // Methods to process user input and generate frames
-    Frame logIn(const std::string host, const std::string username, const std::string password);
-    Frame join(const std::string channel_name);
-    Frame exit(const std::string channel_name);
-    std::vector<Frame> report(const std::string file);
-    Frame summary(const std::string channel_name, const std::string user, const std::string file);
+    // Log in to the server
+    Frame logIn(const std::string& host, const std::string& username, const std::string& password);
+
+    // Join a channel
+    Frame join(const std::string& channelName);
+
+    // Exit a channel
+    Frame exit(const std::string& channelName);
+
+    // Report events
+    std::vector<Frame> report(const std::string& filePath);
+
+    // Generate a summary
+    Frame summary(const std::string& channelName, const std::string& user, const std::string& filePath);
+
+    // Log out from the server
     Frame logout();
+
+private:
+    ConnectionHandler& connectionHandler;
 };

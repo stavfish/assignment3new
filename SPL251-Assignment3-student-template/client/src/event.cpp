@@ -1,4 +1,5 @@
 #include "../include/event.h"
+#include "../include/Utilities.h"
 #include "../include/json.hpp"
 #include <iostream>
 #include <fstream>
@@ -7,8 +8,6 @@
 #include <vector>
 #include <sstream>
 #include <cstring>
-
-#include "../include/keyboardInput.h"
 
 using namespace std;
 using json = nlohmann::json;

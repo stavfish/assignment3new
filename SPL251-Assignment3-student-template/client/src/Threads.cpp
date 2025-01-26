@@ -1,48 +1,95 @@
 #include "Threads.h"
-#include "../include/ConnectionHandler.h"
+#include <iostream>
+#include <sstream>
+#include <thread>
+#include <string>
 
+// Constructor with proper member initialization
 Threads::Threads(ConnectionHandler& handler)
-    : keyboardInput(handler), stompProtocol(handler), running(true) {}
+    : connectionHandler(handler), // Initialize reference
+      keyboardInput(handler),     // Initialize KeyboardInput
+      frameQueue(),               // Initialize queue
+      queueMutex(),               // Initialize mutex
+      queueCV(),                  // Initialize condition variable
+      running(false) {            // Initialize running flag
+    std::cout << "Threads initialized.\n";
+}
 
 void Threads::start() {
+    std::cout << "Threads started.\n";
+    running = true;
+
+    // Start the keyboard and network listeners
     std::thread(&Threads::keyboardListener, this).detach();
     std::thread(&Threads::networkListener, this).detach();
     std::thread(&Threads::frameHandler, this).detach();
 }
 
 void Threads::stop() {
-    std::unique_lock<std::mutex> lock(queueMutex);
+    std::cout << "Threads stopped.\n";
     running = false;
-    queueCV.notify_all(); // Wake up all waiting threads
+
+    // Notify all threads to stop waiting
+    queueCV.notify_all();
 }
 
+bool Threads::isRunning(){
+    return running;
+}
 void Threads::addFrame(const std::string& frame) {
     std::unique_lock<std::mutex> lock(queueMutex);
     frameQueue.push(frame);
-    queueCV.notify_one(); // Signal that a new frame is available
+    queueCV.notify_one(); // Notify the frame handler
+    std::cout << "Frame added: " << frame << "\n";
 }
-
 void Threads::keyboardListener() {
-    while (running) {
-        // Example: Simulate keyboard input handling
-        // This would invoke KeyboardInput methods like logIn, join, etc.
-        std::string input;
-        std::getline(std::cin, input);
+    std::string input;
 
-        // Example: Process input into a frame and add to the queue
-        if (!input.empty()) {
-            Frame frame = keyboardInput.logIn("stomp.cs.bgu.ac.il", "user", "pass"); // Example
-            addFrame(frame.toString());
+    while (running) {
+        std::getline(std::cin, input); // Get user input
+
+        std::istringstream iss(input);
+        std::string command;
+        iss >> command;
+
+        try {
+            if (command == "login") {
+                std::string host, username, password;
+                iss >> host >> username >> password;
+
+                if (host.empty() || username.empty() || password.empty()) {
+                    throw std::invalid_argument("Usage: login <host> <username> <password>");
+                }
+
+                Frame loginFrame = keyboardInput.logIn(host, username, password);
+                addFrame(loginFrame.toString());
+            } else if (command == "join") {
+                // Handle join command
+            } else if (command == "logout") {
+                // Handle logout command
+            } else {
+                std::cerr << "Error: Unknown command \"" << command << "\"." << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
         }
     }
 }
 
+
+
 void Threads::networkListener() {
     while (running) {
         try {
-            Frame frame = stompProtocol.receive();
-            std::cout << "Received frame: " << frame.toString() << std::endl;
-        } catch (const std::exception& e) {
+            std::string rawFrame;
+            if (!connectionHandler.getFrameAscii(rawFrame, '\0')) {
+                std::cerr << "Connection closed while receiving frame." << std::endl;
+                stop();
+                return;
+            }
+            
+        }
+        catch (const std::exception& e) {
             std::cerr << "Error in networkListener: " << e.what() << std::endl;
             stop();
         }
@@ -59,10 +106,11 @@ void Threads::frameHandler() {
         std::string frame = frameQueue.front();
         frameQueue.pop();
 
-        // Send frame via stompProtocol
+        // Process the frame (sending via connectionHandler)
         Frame parsedFrame = Frame::fromString(frame);
-        if (!stompProtocol.send(parsedFrame)) {
-            std::cerr << "Failed to send frame: " << frame << std::endl;
+        std::cout<<frame<<std::endl;
+        if (!connectionHandler.sendFrameAscii(parsedFrame.toString(), '\0')) {
+            std::cerr << "Failed to send frame: " << parsedFrame.toString() << std::endl;
         }
     }
 }

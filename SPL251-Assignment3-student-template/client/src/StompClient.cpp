@@ -26,18 +26,8 @@ int main(int argc, char *argv[]) {
     threads.start();
 
     // Main program loop
-    std::string input;
-    while (true) {
-        std::getline(std::cin, input);
+    while (threads.isRunning()) {
 
-        // Check for exit condition
-        if (input == "exit") {
-            threads.stop();
-            break;
-        }
-
-        // Add input to frame queue (handled in Threads)
-        threads.addFrame(input);
     }
 
     // Clean up
