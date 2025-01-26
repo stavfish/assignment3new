@@ -19,6 +19,7 @@ public class Reactor<T> implements Server<T> {
     private final Supplier<MessageEncoderDecoder<T>> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
+    private ConnectionsImpl connectionsImpl;
 
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
@@ -27,12 +28,14 @@ public class Reactor<T> implements Server<T> {
             int numThreads,
             int port,
             Supplier<MessagingProtocol<T>> protocolFactory,
-            Supplier<MessageEncoderDecoder<T>> readerFactory) {
+            Supplier<MessageEncoderDecoder<T>> readerFactory,
+            ConnectionsImpl<T> connectionsImpl) {
 
         this.pool = new ActorThreadPool(numThreads);
         this.port = port;
         this.protocolFactory = protocolFactory;
         this.readerFactory = readerFactory;
+        this.connectionsImpl = connectionsImpl;
     }
 
     @Override
@@ -95,11 +98,23 @@ public class Reactor<T> implements Server<T> {
     private void handleAccept(ServerSocketChannel serverChan, Selector selector) throws IOException {
         SocketChannel clientChan = serverChan.accept();
         clientChan.configureBlocking(false);
+
+        int connectionId = connectionsImpl.generateNewConnectionId(); 
+        MessagingProtocol<T> protocol = protocolFactory.get();
+        protocol.start(connectionId, connectionsImpl); 
+
         final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
                 readerFactory.get(),
-                protocolFactory.get(),
+                protocol,
                 clientChan,
                 this);
+
+        // if (connectionsImpl.isConnected(connectionId)){
+        //     connectionsImpl.sendError(connectionId,"Client is already login.");
+        //     return;
+        // }                
+        connectionsImpl.addClient(connectionId, handler); 
+
         clientChan.register(selector, SelectionKey.OP_READ, handler);
     }
 

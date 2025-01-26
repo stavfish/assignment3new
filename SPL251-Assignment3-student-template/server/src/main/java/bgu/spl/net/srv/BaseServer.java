@@ -2,6 +2,7 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -13,16 +14,19 @@ public abstract class BaseServer<T> implements Server<T> {
     private final Supplier<MessagingProtocol<T>> protocolFactory;
     private final Supplier<MessageEncoderDecoder<T>> encdecFactory;
     private ServerSocket sock;
+    private ConnectionsImpl connectionsImpl;
 
     public BaseServer(
             int port,
             Supplier<MessagingProtocol<T>> protocolFactory,
-            Supplier<MessageEncoderDecoder<T>> encdecFactory) {
+            Supplier<MessageEncoderDecoder<T>> encdecFactory,
+            ConnectionsImpl<T> connectionsImpl) {
 
         this.port = port;
         this.protocolFactory = protocolFactory;
         this.encdecFactory = encdecFactory;
 		this.sock = null;
+        this.connectionsImpl = connectionsImpl;
     }
 
     @Override
@@ -37,10 +41,21 @@ public abstract class BaseServer<T> implements Server<T> {
 
                 Socket clientSock = serverSock.accept();
 
+                int connectionId = connectionsImpl.generateNewConnectionId(); 
+                MessagingProtocol<T> protocol = protocolFactory.get();
+                protocol.start(connectionId, connectionsImpl); 
+
+
                 BlockingConnectionHandler<T> handler = new BlockingConnectionHandler<>(
                         clientSock,
                         encdecFactory.get(),
-                        protocolFactory.get());
+                        protocol);
+
+                // if (connectionsImpl.isConnected(connectionId)){
+                //     connectionsImpl.sendError(connectionId,"Client is already login.");
+                //     return;
+                // }
+                connectionsImpl.addClient(connectionId, handler); 
 
                 execute(handler);
             }

@@ -40,25 +40,6 @@ public class Frame {
         this.body = body;
     }
 
-    public static Frame fromString (String message){
-        String[] lines = message.split("\n");
-        String command = lines[0].trim(); 
-        ConcurrentHashMap<String, String> headers = new ConcurrentHashMap<>();
-
-        int i = 1;
-        while (i < lines.length && !lines[i].trim().isEmpty()) {
-            String[] header = lines[i].split(":", 2);
-            if (header.length == 2) {
-                headers.put(header[0].trim(), header[1].trim());
-            }
-            i++;
-        }
-
-        String body = (i < lines.length) ? lines[i].trim() : "";
-        Frame newFrame = new Frame(command, headers, body);
-        return newFrame;
-    }
-
     public String toString(){
         StringBuilder sb = new StringBuilder();
         sb.append(command).append("\n"); 
