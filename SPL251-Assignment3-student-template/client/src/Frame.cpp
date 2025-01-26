@@ -1,6 +1,5 @@
 #include "Frame.h"
 #include <iostream>
-#include <pstl/glue_algorithm_defs.h>
 
 // Constructor
 Frame::Frame(const std::string command, const std::map<std::string, std::string> headers, const std::string body)
