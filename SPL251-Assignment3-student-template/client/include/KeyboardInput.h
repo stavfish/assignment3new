@@ -6,19 +6,19 @@
 
 class KeyboardInput {
 public:
-    explicit KeyboardInput(ConnectionHandler& handler);
+    explicit KeyboardInput(ConnectionHandler& handler,int reciptMaker);
 
     // Log in to the server
     Frame logIn(const std::string& host, const std::string& username, const std::string& password);
 
     // Join a channel
-    Frame join(const std::string& channelName);
+    Frame join(const std::string& channelName,int subscription_id);
 
     // Exit a channel
-    Frame exit(const std::string& channelName);
+    Frame exit(const std::string& channelName, const std::string& subscriptionId);
 
     // Report events
-    std::vector<Frame> report(const std::string& filePath);
+    std::vector<Frame> report(const std::string& filePath,const std::string& userName);
 
     // Generate a summary
     Frame summary(const std::string& channelName, const std::string& user, const std::string& filePath);
@@ -28,4 +28,5 @@ public:
 
 private:
     ConnectionHandler& connectionHandler;
+    int reciptMaker;
 };

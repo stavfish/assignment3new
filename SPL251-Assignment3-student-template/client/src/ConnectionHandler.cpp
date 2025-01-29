@@ -33,56 +33,64 @@ bool ConnectionHandler::connect() {
 }
 
 bool ConnectionHandler::getBytes(char bytes[], unsigned int bytesToRead) {
-    size_t totalBytesRead = 0; // Keep track of the total bytes read
+    size_t bytesRead = 0;
     boost::system::error_code error;
 
     try {
-        while (totalBytesRead < bytesToRead) { // Read until the required number of bytes is read
-            size_t bytesRead = socket_.read_some(
-                boost::asio::buffer(bytes + totalBytesRead, bytesToRead - totalBytesRead), error);
+        while (bytesRead < bytesToRead) {
+            size_t chunk = socket_.read_some(
+                boost::asio::buffer(bytes + bytesRead, bytesToRead - bytesRead), error);
 
             if (error) {
                 if (error == boost::asio::error::eof) {
-                    // EOF encountered: log it and return true if all bytes were read
-                    std::cerr << "Connection closed by the server (EOF)." << std::endl;
-                    return totalBytesRead == bytesToRead; // Success if all required bytes are already read
+                    // EOF encountered: Return true only if we've read the expected number of bytes
+                    std::cerr << "EOF encountered. Total bytes read: "
+                              << bytesRead << "/" << bytesToRead << std::endl;
+                    return true;
                 } else {
-                    // Handle other errors as fatal
+                    // Handle other errors
                     throw boost::system::system_error(error);
                 }
             }
 
-            totalBytesRead += bytesRead; // Update the total number of bytes read
-
-            // Debug log
-            std::cerr << "Bytes read: " << bytesRead 
-                      << ", Total read: " << totalBytesRead 
-                      << "/" << bytesToRead << std::endl;
+            bytesRead += chunk;
         }
-    } catch (const std::exception& e) {
-        // Log exceptions other than EOF
-        std::cerr << "getBytes failed (Error: " << e.what() << ")" << std::endl;
+    } catch (const std::exception &e) {
+        std::cerr << "recv failed (Error: " << e.what() << ")" << std::endl;
         return false;
     }
 
-    return true; // Successfully read all required bytes
+    return true; // Successfully read all requested bytes
 }
 
 
+
+
+
+
 bool ConnectionHandler::sendBytes(const char bytes[], int bytesToWrite) {
-	int tmp = 0;
-	boost::system::error_code error;
-	try {
-		while (!error && bytesToWrite > tmp) {
-			tmp += socket_.write_some(boost::asio::buffer(bytes + tmp, bytesToWrite - tmp), error);
-		}
-		if (error)
-			throw boost::system::system_error(error);
-	} catch (std::exception &e) {
-		std::cerr << "recv failed (Error: " << e.what() << ')' << std::endl;
-		return false;
-	}
-	return true;
+    int tmp = 0;
+    boost::system::error_code error;
+
+    try {
+        while (!error && bytesToWrite > tmp) {
+            size_t bytesWritten = socket_.write_some(
+                boost::asio::buffer(bytes + tmp, bytesToWrite - tmp), error);
+
+            tmp += bytesWritten;
+            std::cerr << "Sent " << bytesWritten << " bytes this iteration. Total sent: " 
+                      << tmp << "/" << bytesToWrite << std::endl;
+        }
+
+        if (error) {
+            throw boost::system::system_error(error);
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "Send failed (Error: " << e.what() << ")" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool ConnectionHandler::getLine(std::string &line) {
@@ -95,28 +103,50 @@ bool ConnectionHandler::sendLine(std::string &line) {
 
 
 bool ConnectionHandler::getFrameAscii(std::string &frame, char delimiter) {
-	char ch;
-	// Stop when we encounter the null character.
-	// Notice that the null character is not appended to the frame string.
-	try {
-		do {
-			if (!getBytes(&ch, 1)) {
-				return false;
-			}
-			if (ch != '\0')
-				frame.append(1, ch);
-		} while (delimiter != ch);
-	} catch (std::exception &e) {
-		std::cerr << "recv failed2 (Error: " << e.what() << ')' << std::endl;
-		return false;
-	}
-	return true;
+    char ch;
+    try {
+        while (true) {
+            // Fetch one byte
+            if (!getBytes(&ch, 1)) {
+                // EOF or connection closed
+                std::cerr << "Connection closed or error while reading frame." << std::endl;
+                return false; // Return true if we already have a frame
+            }
+
+            // Append the character to the frame
+            frame += ch;
+
+            // Check for the delimiter
+            if (ch == delimiter) {
+                // Frame is complete
+                break;
+            }
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "getFrameAscii failed (Error: " << e.what() << ")" << std::endl;
+        return false;
+    }
+
+    // Debug log for the complete frame
+    std::cerr << "Complete frame received: " << frame << std::endl;
+
+    return true; // Successfully read the frame
 }
 
+
+
+
 bool ConnectionHandler::sendFrameAscii(const std::string &frame, char delimiter) {
-	bool result = sendBytes(frame.c_str(), frame.length());
-	if (!result) return false;
-	return sendBytes(&delimiter, 1);
+    std::cerr << "Sending frame: " << frame << " (length: " << frame.length() << ")" << std::endl;
+
+    bool result = sendBytes(frame.c_str(), frame.length());
+    if (!result) {
+        std::cerr << "Failed to send frame content." << std::endl;
+        return false;
+    }
+
+    std::cerr << "Sending delimiter: " << static_cast<int>(delimiter) << std::endl;
+    return sendBytes(&delimiter, 0);
 }
 
 // Close down the connection properly.

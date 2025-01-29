@@ -7,7 +7,7 @@ LDFLAGS := -lboost_system -lpthread
 TARGET := bin/StompClient
 
 # Object files
-OBJS := bin/StompClient.o bin/ConnectionHandler.o bin/Threads.o bin/KeyboardInput.o bin/Frame.o bin/Utilities.o
+OBJS := bin/StompClient.o bin/ConnectionHandler.o bin/Threads.o bin/KeyboardInput.o bin/Frame.o bin/Utilities.o bin/StompProtocol.o bin/ClientDataBase.o bin/event.o 
 
 # Default target
 all: $(TARGET)
@@ -34,6 +34,17 @@ bin/Frame.o: src/Frame.cpp include/Frame.h
 
 bin/Utilities.o: src/Utilities.cpp include/Utilities.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+bin/StompProtocol.o: src/StompProtocol.cpp include/StompProtocol.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+bin/ClientDataBase.o: src/ClientDataBase.cpp include/ClientDataBase.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+bin/event.o: src/event.cpp include/event.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+
 
 # Clean target
 .PHONY: clean

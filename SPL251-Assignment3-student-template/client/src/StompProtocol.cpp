@@ -1,40 +1,81 @@
-#include "../include/ConnectionHandler.h"
-#include "../include/Frame.h"
+#include "StompProtocol.h"
 #include <iostream>
-#include <stdexcept> // For std::runtime_error
+#include <stdexcept>
+#include <fstream>
 
-class StompProtocol {
-public:
-    // Constructor: Use a reference to ConnectionHandler to avoid copying
-    explicit StompProtocol(ConnectionHandler& handler) : connectionHandler(handler) {}
+// Constructor retrieves the singleton instance
+StompProtocol::StompProtocol() : database(ClientDataBase::getInstance()) {}
 
-    // Send a frame
-    bool send(const Frame& frame) {
-        // Convert Frame to a STOMP string
-        std::string frameString = frame.toString();
-
-        // Use ConnectionHandler to send the frame
-        if (!connectionHandler.sendFrameAscii(frameString, '\0')) {
-            std::cerr << "Failed to send frame: " << frameString << std::endl;
-            return false;
-        }
-        return true;
+// Handles user login
+int StompProtocol::joinChannel(const std::string& subscriptionId) const {
+    return database.insertSubscription(subscriptionId);
+}
+void StompProtocol::addRecipt(std::string reciptId, std::string recipt){
+    database.addRecipt(reciptId,recipt);
+}
+std::string StompProtocol::getId(const std::string& subscriptionId) const{
+    return database.getId(subscriptionId);
+}
+void StompProtocol::leaveChannel(const std::string& subscriptionId) const{
+    database.leaveChannel(subscriptionId);
+}
+std::vector<std::string> StompProtocol::getMessagesPerUser(std::string channelName, std::string userName){
+    return database.getMessagesPerUser(channelName,userName);
+}
+void StompProtocol::addMessage(std::string channelName, std::string messageFrame){
+    database.addMessage(channelName,messageFrame);
+}
+int StompProtocol::getTotalReportsNumber() const{
+    return database.getTotalReportsNumber();
+}
+int StompProtocol::getActiveNumber() const{
+    return database.getActiveNumber();
+}
+int StompProtocol::getNumberOfForcesArrival() const{
+    return database.getNumberOfForcesArrival();
+}
+void StompProtocol::increaseTotalReports(){
+    database.increaseTotalReports();
+}
+void StompProtocol::increaseNumberOfForcesArrival(){
+    database.increaseNumberOfForcesArrival();
+}
+void StompProtocol::increaseActiveNumber(){
+    database.increaseActiveNumber();
+}
+void StompProtocol::writeChannelReportToFile(const std::string& filePath,
+                              const std::string& channelName,
+                              const std::vector<std::string>& reportsByName) {
+    // Open the file in overwrite mode
+    std::ofstream outFile(filePath, std::ios::out | std::ios::trunc);
+    if (!outFile.is_open()) {
+        std::cerr << "Failed to open file: " << filePath << std::endl;
+        return;
     }
 
-    // Receive a frame
-    Frame receive() {
-        std::string frameString;
-        std::cout << "Frame is: " << frameString << std::endl;
-        // Use ConnectionHandler to receive the frame as a string
-        if (!connectionHandler.getFrameAscii(frameString, '\0')) {
-            std::cerr << "Failed to receive frame" << std::endl;
-            throw std::runtime_error("Connection error while receiving frame");
-        }
+    // Write channel information
+    outFile << "Channel <" << channelName << ">\n";
+    outFile << "Stats:\n";
+    outFile << "Total: " << getTotalReportsNumber() << "\n";
+    outFile << "active: " << getActiveNumber() << "\n";
+    outFile << "forces arrival at scene: " << getNumberOfForcesArrival() << "\n\n";
 
-        // Convert the raw string into a Frame object
-        return Frame::fromString(frameString);
+    // Write report information
+    outFile << "Event Reports:\n";
+
+    int reportCounter = 1;
+    for (const auto& report : reportsByName) {
+        outFile << "Report_" << reportCounter++ << ":\n";
+        outFile << "    " << report << "\n";
     }
 
-private:
-    ConnectionHandler& connectionHandler; // Reference to avoid copying
-};
+    // Close the file
+    outFile.close();
+    std::cout << "File written successfully: " << filePath << std::endl;
+}
+std::unordered_map<std::string,int> StompProtocol::getAllChannels(){
+    return database.getUserSubscriptions();
+}
+void StompProtocol::disconnect(){
+    database.cleanData();
+}

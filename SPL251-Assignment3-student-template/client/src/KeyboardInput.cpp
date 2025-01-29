@@ -3,9 +3,10 @@
 #include <map>
 #include <iostream>
 #include <vector>
+#include <event.h>
 
 // Constructor
-KeyboardInput::KeyboardInput(ConnectionHandler& handler) : connectionHandler(handler) {
+KeyboardInput::KeyboardInput(ConnectionHandler& handler,int recipt1) : connectionHandler(handler),reciptMaker(recipt1) {
     std::cout << "KeyboardInput initialized.\n";
 }
 
@@ -21,37 +22,47 @@ Frame KeyboardInput::logIn(const std::string& host, const std::string& username,
 }
 
 // Join a channel
-Frame KeyboardInput::join(const std::string& channelName) {
-    std::map<std::string, std::string> headers = {
+Frame KeyboardInput::join(const std::string& channelName,int subscription_id) {
+    std::map<std::string, std::string> headers ={
         {"destination", "/" + channelName},
-        {"id", "1"},  // Unique ID for subscription
-        {"receipt", "join-receipt"}
+        {"id", std::to_string(subscription_id)},  // Unique ID for subscription
+        {"receipt", std::to_string(reciptMaker)}
     };
+    reciptMaker++;
     return Frame("SUBSCRIBE", headers, "");
 }
-
 // Exit a channel
-Frame KeyboardInput::exit(const std::string& channelName) {
+Frame KeyboardInput::exit(const std::string& channelName, const std::string& subscriptionId) {
     std::map<std::string, std::string> headers = {
-        {"id", "1"},  // Match the ID used in the join command
-        {"receipt", "exit-receipt"}
+        {"id", subscriptionId},  // Match the ID used in the join command
+        {"receipt", std::to_string(reciptMaker)}
     };
+    reciptMaker++;
     return Frame("UNSUBSCRIBE", headers, "");
 }
 
 // Report events (example using a file path to parse events)
-std::vector<Frame> KeyboardInput::report(const std::string& filePath) {
+std::vector<Frame> KeyboardInput::report(const std::string& filePath,const std::string& userName) {
     std::vector<Frame> frames;
 
-    // This is a stub implementation. Replace with actual file parsing.
+    names_and_events nne = parseEventsFile(filePath);
     std::cout << "Parsing events from file: " << filePath << std::endl;
 
-    // Example frame creation
+   for(Event e:nne.events){
+    e.setEventOwnerUser(userName);
     std::map<std::string, std::string> headers = {
-        {"destination", "/exampleChannel"}
+        {"destination", "/" + nne.channel_name},
+        {"user", e.getEventOwnerUser()},
+        {"city", e.get_city()},
+        {"event name" , e.get_name()},
+        {"date time", std::to_string(e.get_date_time())},
+        {"general information",""},
+        {"  active", e.get_general_information().at("active")},
+        {"  forces_arrival_at_scene",e.get_general_information().at("forces_arrival_at_scene")}
     };
-    frames.push_back(Frame("SEND", headers, "Event data"));
-
+    std::string desc = "description:\n" + e.get_description() ;
+    frames.push_back(Frame("SEND", headers,desc));
+   }
     return frames;
 }
 
@@ -66,7 +77,8 @@ Frame KeyboardInput::summary(const std::string& channelName, const std::string& 
 // Log out
 Frame KeyboardInput::logout() {
     std::map<std::string, std::string> headers = {
-        {"receipt", "logout-receipt"}
+        {"receipt", std::to_string(reciptMaker)}
     };
+    reciptMaker++;
     return Frame("DISCONNECT", headers, "");
 }

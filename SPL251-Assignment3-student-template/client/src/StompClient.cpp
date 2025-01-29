@@ -2,6 +2,7 @@
 #include <string>
 #include "Threads.h"
 #include "ConnectionHandler.h"
+#include "json.hpp"
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
@@ -14,13 +15,14 @@ int main(int argc, char *argv[]) {
 
     // Initialize the ConnectionHandler
     ConnectionHandler connectionHandler(host, port);
+    StompProtocol stompProtocol;
     if (!connectionHandler.connect()) {
         std::cerr << "Failed to connect to " << host << ":" << port << std::endl;
         return -1;
     }
 
     // Initialize the Threads class
-    Threads threads(connectionHandler);
+    Threads threads(connectionHandler,stompProtocol);
 
     // Start threads
     threads.start();
