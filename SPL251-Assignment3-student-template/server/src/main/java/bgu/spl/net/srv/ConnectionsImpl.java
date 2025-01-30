@@ -162,11 +162,11 @@ public class ConnectionsImpl<T> implements Connections<Frame> {
         clients.put(connectionId, handler);
     }
 
-    // public void sendError(int connectionId, String errorMessage) {
-    //     ConcurrentHashMap<String, String> respondHeaders = new ConcurrentHashMap<>();
-    //     respondHeaders.put("message",errorMessage);
-    //     Frame respondFrame = new Frame("ERROR", respondHeaders, null);
-    //     send(connectionId, respondFrame);
-    //     disconnect(connectionId);
-    // }
+    public void sendError(int connectionId, String errorMessage) {
+        ConcurrentHashMap<String, String> respondHeaders = new ConcurrentHashMap<>();
+        respondHeaders.put("message",errorMessage);
+        Frame respondFrame = new Frame("ERROR", respondHeaders, null);
+        send(connectionId, respondFrame);
+        disconnect(connectionId);
+    }
 }

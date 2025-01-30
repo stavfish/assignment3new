@@ -2,6 +2,7 @@
 
 #include "ClientDataBase.h"
 #include <string>
+#include "Frame.h"
 
 class StompProtocol {
 private:
@@ -14,7 +15,7 @@ public:
     void addRecipt(std::string reciptId,std::string recipt);
     std::string getId(const std::string& subscriptionId) const;
     void leaveChannel(const std::string& subscriptionId) const;
-    std::vector<std::string> getMessagesPerUser(std::string channelName, std::string userName);
+    std::vector<Event> getMessagesPerUser(std::string channelName, std::string userName);
     void addMessage(std::string channelName, std::string messageFrame);
     int getTotalReportsNumber() const;
     int getActiveNumber() const;
@@ -24,7 +25,10 @@ public:
     void increaseActiveNumber();
     void writeChannelReportToFile(const std::string& filePath,
                               const std::string& channelName,
-                              const std::vector<std::string>& reportsByName);
+                              const std::vector<Event>& reportsByName);
     std::unordered_map<std::string,int> getAllChannels();
     void disconnect();
+    void errorFrameDetected(Frame F);
+    void addReciptSubscription(std::map<std::string, std::string> headers,std::string command);
+    std::string reciptSuccseed(std::string reciptId);
 };

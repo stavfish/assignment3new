@@ -9,22 +9,20 @@ public class StompServer {
 
     public static void main(String[] args) {
 
-    // if (args.length < 2) {
-    //     System.out.println("Usage: StompServer <tpc/reactor> [port]");
-    //     return;
-    // }
-    // String mode = args[1]; // Either "tpc" or "reactor"
-    // int port; 
-    // try {
-    //     port = Integer.parseInt(args[0]); // Parse port number
-    // } catch (NumberFormatException e) {
-    //     System.out.println("Invalid port number.");
-    //     return;
-    // }
-    String mode = "Reactor";
-    int port = 7777;
-    
-    if (mode.equals("TPC")) {
+    if (args.length < 2) {
+        System.out.println("Usage: StompServer <tpc/reactor> [port]");
+        return;
+    }
+    String mode = args[1].toLowerCase();; // Either "tpc" or "reactor"
+    int port; 
+    try {
+        port = Integer.parseInt(args[0]); // Parse port number
+    } catch (NumberFormatException e) {
+        System.out.println("Invalid port number.");
+        return;
+    }
+
+    if (mode.equals("tpc")) {
         Server.threadPerClient(
                 port,
                 () -> new StompMessagingProtocolImpl(), 
@@ -32,7 +30,7 @@ public class StompServer {
                 new ConnectionsImpl<>()
         ).serve();
     }
-    else if (mode.equals("Reactor")) {
+    else if (mode.equals("reactor")) {
         Server.reactor(
                 Runtime.getRuntime().availableProcessors(),
                 port,

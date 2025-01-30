@@ -3,13 +3,15 @@
 #include <mutex>
 #include <stdexcept>
 #include <vector>
+#include "event.h"
 
 class ClientDataBase {
 private:
     static ClientDataBase* instance;
     std::unordered_map< std::string,int> userSubscriptions;
     std::unordered_map<std::string,std ::string> recipts;
-    std::unordered_map<std::string, std::vector<std::string>> channelMessages; 
+    std::unordered_map<std::string, std::vector<Event>> channelMessages; 
+    std::map<std::string,std::map<std::string, std::string>>  receiptToSubscriptions;
     int nextSubscriptionId;
     int totalReportsNumber;
     int numberOfActive;
@@ -23,8 +25,8 @@ public:
     void addRecipt(std::string reciptId, std::string recipt);
     std::string getId(std::string valueToFind);
     void leaveChannel(std::string subscriptionId);
-    void addMessage(std::string channelName, std::string messageFrame);
-    std::vector<std::string> getMessagesPerUser(std::string channelName, std::string userName);
+    void addMessage(std::string channelName, Event eventToAdd);
+    std::vector<Event> getMessagesPerUser(std::string channelName, std::string userName);
     int extractDateTime(std::string& str);
     std::string extractUser(const std::string& str);
     int getTotalReportsNumber();
@@ -35,4 +37,6 @@ public:
     void increaseActiveNumber();
     std::unordered_map<std::string,int> getUserSubscriptions();
     void cleanData();
+    void addReciptSubscription(std::map<std::string, std::string>  headers,std::string command);
+    std::string getReciptString(std::string);
 };

@@ -51,10 +51,10 @@ public abstract class BaseServer<T> implements Server<T> {
                         encdecFactory.get(),
                         protocol);
 
-                // if (connectionsImpl.isConnected(connectionId)){
-                //     connectionsImpl.sendError(connectionId,"Client is already login.");
-                //     return;
-                // }
+                if (connectionsImpl.isConnected(connectionId)){
+                    connectionsImpl.sendError(connectionId,"Client is already login.");
+                    return;
+                }
                 connectionsImpl.addClient(connectionId, handler); 
 
                 execute(handler);

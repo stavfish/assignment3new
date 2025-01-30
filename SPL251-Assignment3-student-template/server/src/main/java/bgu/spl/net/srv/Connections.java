@@ -22,5 +22,7 @@ public interface Connections<T> {
 
     boolean isSubscribed(String destination, int connectionId);
 
+    void sendError(int connectionId, String errorMessage);
+
 
 }

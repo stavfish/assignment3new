@@ -52,18 +52,11 @@ std::vector<Frame> KeyboardInput::report(const std::string& filePath,const std::
     e.setEventOwnerUser(userName);
     std::map<std::string, std::string> headers = {
         {"destination", "/" + nne.channel_name},
-        {"user", e.getEventOwnerUser()},
-        {"city", e.get_city()},
-        {"event name" , e.get_name()},
-        {"date time", std::to_string(e.get_date_time())},
-        {"general information",""},
-        {"  active", e.get_general_information().at("active")},
-        {"  forces_arrival_at_scene",e.get_general_information().at("forces_arrival_at_scene")}
     };
-    std::string desc = "description:\n" + e.get_description() ;
-    frames.push_back(Frame("SEND", headers,desc));
+    std::string body = "user:"+e.getEventOwnerUser()+"\n"+"city:"+e.get_city()+"\n"+"event name:" + e.get_name() + "\n" +"date time:"+ std::to_string(e.get_date_time()) + "\n" + "general information: ...\n" +"  active:"+ e.get_general_information().at("active")+"\n" +"  forces_arrival_at_scene:" + e.get_general_information().at("forces_arrival_at_scene")+"\n" + "description:\n" + e.get_description() ;
+    frames.push_back(Frame("SEND", headers,body));
    }
-    return frames;
+return frames;
 }
 
 // Generate a summary

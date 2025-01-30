@@ -109,10 +109,10 @@ public class Reactor<T> implements Server<T> {
                 clientChan,
                 this);
 
-        // if (connectionsImpl.isConnected(connectionId)){
-        //     connectionsImpl.sendError(connectionId,"Client is already login.");
-        //     return;
-        // }                
+        if (connectionsImpl.isConnected(connectionId)){
+            connectionsImpl.sendError(connectionId,"Client is already login.");
+            return;
+        }                
         connectionsImpl.addClient(connectionId, handler); 
 
         clientChan.register(selector, SelectionKey.OP_READ, handler);

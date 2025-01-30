@@ -36,16 +36,12 @@ std::string Frame::toString() const {
     std::ostringstream oss;
 
     oss << command << "\n";
-    std::cout << "Command: " << command << std::endl;
 
     for (const auto& header : headers) {
         oss << header.first << ":" << header.second << "\n";
-        std::cout << "Header: " << header.first << " -> " << header.second << std::endl;
     }
 
     oss << "\n" << body << '\0';
-    std::cout << "Body: " << body << std::endl;
-
     return oss.str();
 }
 
@@ -59,10 +55,6 @@ Frame Frame::fromString(const std::string frameString) {
     }
     std::string command = line;
 
-    // Debug log
-    std::cout << "Parsed command: " << command << std::endl;
-
-    // Get headers
     std::map<std::string, std::string> headers;
     while (std::getline(iss, line) && !line.empty()) {
         size_t delimiter = line.find(':');
@@ -70,21 +62,13 @@ Frame Frame::fromString(const std::string frameString) {
             throw std::invalid_argument("Invalid frame: Malformed header: " + line);
         }
         std::string key = line.substr(0, delimiter);
-        std::string value = line.substr(delimiter + 1);
-
-        // Debug log
-        std::cout << "Parsed header: " << key << " -> " << value << std::endl;
-
+        std::string value = line.substr(delimiter+1);
         headers[key] = value;
     }
 
     // Get body
     std::string body;
     std::getline(iss, body, '\0'); // Read until null terminator
-    if (!body.empty()) {
-        std::cout << "Parsed body: " << body << std::endl;
-    }
-
     return Frame(command, headers, body);
 }
 
